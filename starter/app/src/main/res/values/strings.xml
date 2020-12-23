@@ -1,14 +1,44 @@
 <resources>
-    <string name="app_name">ND940C3-Project</string>
+    <!-- App strings -->
+    <string name="app_name">ND940C3-Project (LoadApp)</string>
     <string name="app_description">Download files from Internet</string>
     <string name="action_settings">Settings</string>
+    <string name="title_activity_detail">DetailActivity</string>
 
-
+    <!-- Notification strings -->
     <string name="notification_title">Udacity: Android Kotlin Nanodegree </string>
     <string name="notification_description">The Project 3 repository is downloaded</string>
     <string name="notification_button">See changes</string>
+    <string name="notification_channel_id">download_channel</string>
+    <string name="notification_channel_name">Downloads</string>
+    <string name="notification_channel_desc">GitHub Repo Downloads</string>
 
-    <string name="button_name">Click me</string>
-    <string name="button_loading">We are loading </string>
-    <string name="title_activity_detail">DetailActivity</string>
+    <!-- Button strings -->
+    <string name="button_name">Download</string>
+    <string name="button_loading">Downloading…</string>
+
+    <!-- Radio Button strings -->
+    <string name="glide">Glide - Image Loading Library by BumpTech</string>
+    <string name="loadApp">LoadApp - Current Repository by Udacity</string>
+    <string name="retrofit">Retrofit - Type-safe HTTP client for Android and Java by Square, Inc</string>
+
+    <!-- Repo URL strings -->
+    <string name="glide_url">https://github.com/bumptech/glide/archive/master.zip</string>
+    <string name="loadapp_url">https://github.com/udacity/nd940-c3-advanced-android-programming-project-starter/archive/master.zip</string>
+    <string name="retrofit_url">https://github.com/square/retrofit/archive/master.zip</string>
+    <string name="stashed_repos">/repositories/repo.zip</string>
+    <string name="stashed_repo_folder">/repositories</string>
+
+    <!-- Response/Toast strings -->
+    <string name="success">Success!</string>
+    <string name="failure">Failure!</string>
+    <string name="in_progress">In progress…</string>
+    <string name="nothing_selected">No repository selected! Select one and tap \"Download\" again.</string>
+    <string name="file_name">File Name:</string>
+    <string name="status">Status:</string>
+    <string name="okay">Okay</string>
+    <string name="download_complete">Download Complete</string>
+    <string name="no_permission">Cancelling, no permissions granted</string>
+    <string name="view_details">View</string>
+
 </resources>
