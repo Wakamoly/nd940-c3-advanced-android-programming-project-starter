@@ -8,9 +8,7 @@ import android.graphics.*
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
-import androidx.core.view.postDelayed
 import com.udacity.R
-import java.util.*
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.properties.Delegates
@@ -28,31 +26,33 @@ class LoadingButton @JvmOverloads constructor(
     private val cornerRadius = 25f
     private val loadingRect = Rect()
 
+    // No longer need to set text to our button, our ButtonState class takes care of the value.
     private val buttonText: String
         get() = context.getString(this.buttonState.textID)
     private var backColor = context.getColor(R.color.colorPrimary)
     private var backInProgressColor = context.getColor(R.color.colorPrimaryDark)
     private var circColor = context.getColor(R.color.colorAccent)
+    private var failureColor = context.getColor(R.color.button_failed_color)
+    private var textColor = context.getColor(R.color.white)
 
     private var valueAnimator = ValueAnimator()
 
-    private var buttonState: ButtonState by Delegates.observable<ButtonState>(ButtonState.Completed) { prop, oldVal, newVal ->
+    var buttonState: ButtonState by Delegates.observable<ButtonState>(ButtonState.Completed) { prop, oldVal, newVal ->
 
         when(newVal){
             is ButtonState.Loading -> {
                 if (oldVal != ButtonState.Loading) {
                     setAnim()
-                    setButtonBgColor(context.getColor(R.color.button_loading_color))
+                    setButtonBgColor(backColor)
                 }
             }
 
             is ButtonState.Completed -> {
-                setButtonBgColor(context.getColor(R.color.button_completed_color))
                 setButtonProgress(1f)
             }
 
             is ButtonState.Failed -> {
-                setButtonBgColor(context.getColor(R.color.button_failed_color))
+                setButtonBgColor(failureColor)
                 resetProgress()
             }
 
@@ -69,6 +69,7 @@ class LoadingButton @JvmOverloads constructor(
             interpolator = AccelerateDecelerateInterpolator()
             // 1.5 second for 100% progress, 750ms for 50% progress, etc.
             val animDuration = abs(1500 * ((lastProgress - progress) / 100)).toLong()
+            // set minimum increment of progress duration to 400ms
             duration = if (animDuration >= 400){
                 animDuration
             }else{
@@ -92,9 +93,9 @@ class LoadingButton @JvmOverloads constructor(
         }
     }
 
-    // set the color of our button's background
+    // change the color of our button's background
     private fun setButtonBgColor(backgroundColor: Int) {
-        backColor = backgroundColor
+        backgroundPaint.color = backgroundColor
     }
 
     // Reset our button progress
@@ -111,7 +112,7 @@ class LoadingButton @JvmOverloads constructor(
     }
 
     // Very regularly, it seems DownloadManager.COLUMN_TOTAL_SIZE_BYTES doesn't like working, so
-    // we'll fake some progress if we've actually downloaded a few bytes.
+    // we'll feign some progress if we've actually downloaded a few bytes, but only to 65%.
     fun addButtonProgress(progressF: Float) {
         if (progress < 0.65f){
             setButtonProgress(progress + progressF)
@@ -128,12 +129,12 @@ class LoadingButton @JvmOverloads constructor(
             0
         ).apply {
             try {
+                // styleable colors from XML attrs
                 backColor = getColor(R.styleable.LoadingButton_backgroundColor, backColor)
-                backInProgressColor = getColor(
-                    R.styleable.LoadingButton_inProgressBackgroundColor,
-                    backInProgressColor
-                )
+                backInProgressColor = getColor(R.styleable.LoadingButton_inProgressBackgroundColor, backInProgressColor)
                 circColor = getColor(R.styleable.LoadingButton_circleProgressColor, circColor)
+                failureColor = getColor(R.styleable.LoadingButton_failureColor, failureColor)
+                textColor = getColor(R.styleable.LoadingButton_textColor, textColor)
             } finally {
                 recycle()
             }
@@ -145,11 +146,12 @@ class LoadingButton @JvmOverloads constructor(
         color = backColor
     }
 
-    // styling the in-progress background
+    // styling the default in-progress background
     private val inProgressBackgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = backInProgressColor
     }
 
+    // styling the default in-progress circle
     private val inProgressArcPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = circColor
         style = Paint.Style.FILL
@@ -178,7 +180,6 @@ class LoadingButton @JvmOverloads constructor(
             loadingRect.set(0, 0, (width * progress).roundToInt(), height)
             drawRect(loadingRect, inProgressBackgroundPaint)
 
-
             if (buttonState == ButtonState.Loading) {
                 val circleStartX = width / 2f + textRect.width() / 2f
                 val circleStartY = height / 2f - 20
@@ -188,7 +189,6 @@ class LoadingButton @JvmOverloads constructor(
                 )
                 textOffset = 35
             }
-
 
             drawText(buttonText, textX - textOffset, textY, textPaint)
             restore()

@@ -16,8 +16,6 @@ import com.udacity.models.NotificationModel
 object NotificationUtil {
 
     private val NOTIFICATION_ID = 0
-    private val REQUEST_CODE_DL = 0
-    private val FLAGS = 0
 
     /**
      * Builds and delivers the notification.
@@ -68,7 +66,6 @@ object NotificationUtil {
 
     }
 
-
     @RequiresApi(Build.VERSION_CODES.O)
     fun createNotificationChannel(context: Context, channelDetails: NotiChannelDetails) {
         val notificationManager =
@@ -88,10 +85,12 @@ object NotificationUtil {
         }
     }
 
+    // Used if we want to clear a specific notification, but I like to watch my animations a few times so I won't use this.
+    // View the result by tapping the "View" intent action on the notification instead of the notification itself
+    // so the notification isn't cleared automatically.
     fun clearNotification(context: Context, notificationId: Int) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
         notificationManager.cancel(notificationId)
     }
 

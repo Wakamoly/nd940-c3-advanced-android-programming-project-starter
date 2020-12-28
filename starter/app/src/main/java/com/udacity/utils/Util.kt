@@ -10,10 +10,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.database.Cursor
+import android.util.Patterns
 import android.view.View
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import com.udacity.R
+import com.udacity.utils.Util.isURL
+import java.net.MalformedURLException
+import java.net.URISyntaxException
+import java.net.URL
 
 
 object Util {
@@ -44,25 +49,51 @@ object Util {
             override fun onAnimationStart(animation: Animator?) {
                 view.isEnabled = false
             }
+
             override fun onAnimationEnd(animation: Animator?) {
                 view.isEnabled = true
             }
         })
     }
 
-    fun Activity.verifyPermissions(): Boolean {
+    fun Activity.verifyStoragePermission(): Boolean {
 
         // This will return the current Status
-        val permissionExternalMemory = ActivityCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        val permissionExternalMemory = ActivityCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        )
         if (permissionExternalMemory != PackageManager.PERMISSION_GRANTED) {
-            val STORAGE_PERMISSIONS = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            val storagePermissions = arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE)
 
             // If permission not granted then ask for permission in real time.
             showToast(resources.getString(R.string.no_permission))
-            ActivityCompat.requestPermissions(this, STORAGE_PERMISSIONS, 1)
+            ActivityCompat.requestPermissions(this, storagePermissions, 1)
             return false
         }
         return true
+    }
+
+    fun String.isURL(): Boolean {
+        val thisString = this.makeHTTP()
+        return try {
+            URL(thisString).toURI()
+            Patterns.WEB_URL.matcher(thisString).matches()
+        } catch (e: MalformedURLException) {
+            e.printStackTrace()
+            false
+        } catch (e: URISyntaxException) {
+            e.printStackTrace()
+            false
+        }
+    }
+
+    fun String.makeHTTP(): String {
+        var tempString = this
+        if (!this.startsWith("http")) {
+            tempString = "https://$tempString"
+        }
+        return tempString
     }
 
 }

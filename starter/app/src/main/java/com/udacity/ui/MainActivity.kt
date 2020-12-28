@@ -2,17 +2,14 @@ package com.udacity.ui
 
 import android.app.DownloadManager
 import android.app.NotificationManager
-import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.util.Log
 import android.view.View
 import android.widget.RadioButton
 import androidx.appcompat.app.AppCompatActivity
@@ -25,15 +22,16 @@ import com.udacity.custom_button.LoadingButton
 import com.udacity.models.NotiChannelDetails
 import com.udacity.models.NotificationModel
 import com.udacity.utils.DownloadProgressLiveData
+import com.udacity.utils.Util.isURL
+import com.udacity.utils.Util.makeHTTP
 import com.udacity.utils.Util.receive
 import com.udacity.utils.Util.showToast
-import com.udacity.utils.Util.verifyPermissions
+import com.udacity.utils.Util.verifyStoragePermission
 import com.udacity.utils.notifications.NotificationUtil.createNotificationChannel
 import com.udacity.utils.notifications.NotificationUtil.sendNotification
 import kotlinx.android.synthetic.main.activity_main.*
-import kotlinx.coroutines.*
+import kotlinx.android.synthetic.main.content_main.*
 import java.io.File
-import kotlin.coroutines.CoroutineContext
 
 
 class MainActivity : AppCompatActivity() {
@@ -43,8 +41,6 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var downloadButton : LoadingButton
     private lateinit var notificationManager: NotificationManager
-    private lateinit var pendingIntent : PendingIntent
-    private lateinit var action : NotificationCompat.Action
     private val downloadManager by lazy {
         application.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
     }
@@ -57,10 +53,43 @@ class MainActivity : AppCompatActivity() {
         registerReceiver(receiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
 
         downloadButton = findViewById(R.id.custom_button)
+
         downloadButton.setOnClickListener {
-            downloadButton.setLoadingButtonState(ButtonState.Clicked)
-            download()
+            when (radio_group.checkedRadioButtonId) {
+                R.id.rb_glide_dl -> {
+                    urlSelected = glideUrl
+                    download()
+                }
+                R.id.rb_loadapp_dl -> {
+                    urlSelected = loadAppUrl
+                    download()
+                }
+                R.id.rb_retrofit_dl -> {
+                    urlSelected = retrofitUrl
+                    download()
+                }
+                R.id.rb_custom_dl -> {
+                    val url = custom_url_et.text.toString().trim()
+                    if (url.isURL()) {
+                        urlSelected = url
+                        download()
+                    } else {
+                        downloadButton.setLoadingButtonState(ButtonState.Init)
+                        showToast(getString(R.string.select_a_valid_url))
+                    }
+                }
+            }
         }
+
+        rb_custom_dl.setOnCheckedChangeListener { _, isChecked ->
+            custom_url_et.visibility = if (isChecked) {
+                View.VISIBLE
+            } else {
+                custom_url_et.text = null
+                View.GONE
+            }
+        }
+
     }
 
     private val receiver = object : BroadcastReceiver() {
@@ -68,7 +97,8 @@ class MainActivity : AppCompatActivity() {
             val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
             if (downloadID == id){
 
-                /*if (intent.receive(intent.action.toString(), context)){
+                if (intent.receive(intent.action.toString(), context)){
+                    // Yay!
                     downloadButton.setLoadingButtonState(ButtonState.Completed)
                     val notificationModel = NotificationModel(
                         urlSelected.toString(),
@@ -76,13 +106,14 @@ class MainActivity : AppCompatActivity() {
                     )
                     notificationManager.sendNotification(applicationContext, notificationModel)
                 }else{
+                    // Boo!
                     downloadButton.setLoadingButtonState(ButtonState.Failed)
                     val notificationModel = NotificationModel(
                         urlSelected.toString(),
                         getString(R.string.failure)
                     )
                     notificationManager.sendNotification(applicationContext, notificationModel)
-                }*/
+                }
 
             }
         }
@@ -94,12 +125,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun download() {
-        if (urlSelected != null){
+        if (!urlSelected.isNullOrBlank()){
 
-            if (!verifyPermissions()) {
+            if (!verifyStoragePermission()) {
                 // return if permissions have not been given
                 return
             }
+
+            val urlString = urlSelected?.makeHTTP()
 
             // Ensure our button reflects that we are now loading
             downloadButton.setLoadingButtonState(ButtonState.Loading)
@@ -132,7 +165,7 @@ class MainActivity : AppCompatActivity() {
 
             // Create a download request
             val request =
-                DownloadManager.Request(Uri.parse(urlSelected))
+                DownloadManager.Request(Uri.parse(urlString))
                     .setTitle(getString(R.string.app_name))
                     .setDescription(getString(R.string.app_description))
                     .setRequiresCharging(false)
@@ -140,7 +173,6 @@ class MainActivity : AppCompatActivity() {
                     .setAllowedOverRoaming(true)
                     .setDestinationInExternalPublicDir(
                         Environment.DIRECTORY_DOWNLOADS,
-                        // TODO: 12/22/20 Get file name and extension
                         getString(R.string.stashed_repos)
                     )
             // enqueue puts the download request in the queue.
@@ -148,58 +180,34 @@ class MainActivity : AppCompatActivity() {
 
             val downloadProgressLD = DownloadProgressLiveData(application, downloadID)
             downloadProgressLD.observe(this, Observer {
-                when (it.status) {
-                    DownloadManager.STATUS_SUCCESSFUL -> {
-                        downloadButton.setLoadingButtonState(ButtonState.Completed)
-                        val notificationModel = NotificationModel(
-                            urlSelected.toString(),
-                            getString(R.string.success)
-                        )
-                        notificationManager.sendNotification(applicationContext, notificationModel)
-                    }
-                    DownloadManager.STATUS_FAILED -> {
-                        downloadButton.setLoadingButtonState(ButtonState.Failed)
-                        val notificationModel = NotificationModel(
-                            urlSelected.toString(),
-                            getString(R.string.failure)
-                        )
-                        notificationManager.sendNotification(applicationContext, notificationModel)
-                    }
-                    else -> {
-                        var progress = ((it.bytesDownloadedSoFar * 100L) / it.totalSizeBytes).toFloat()
-                        Log.d("TAG", "download: $progress")
-                        if (it.totalSizeBytes != (-1).toLong()){
-                            progress = (progress / 100)
-                            downloadButton.setButtonProgress(progress)
-                            Log.d("TAG", "download2: $progress")
-                        }else {
-                            downloadButton.addButtonProgress(0.05f)
-                        }
-                    }
+                var progress = ((it.bytesDownloadedSoFar * 100L) / it.totalSizeBytes).toFloat()
+                if (it.totalSizeBytes != (-1).toLong()){
+                    progress = (progress / 100)
+                    downloadButton.setButtonProgress(progress)
+                }else if (it.bytesDownloadedSoFar > 1) {
+                    downloadButton.addButtonProgress(0.05f)
                 }
+
             })
 
         }else{
-            downloadButton.setLoadingButtonState(ButtonState.Completed)
+            downloadButton.setLoadingButtonState(ButtonState.Init)
             showToast(getString(R.string.nothing_selected))
         }
 
     }
 
+    // radio button clicks from XML
     fun onRBClicked(view: View) {
-        if (view is RadioButton){
-            when (view.id) {
-                R.id.rb_glide_dl -> {
-                    if (view.isChecked) urlSelected = getString(R.string.glide_url)
-                }
-                R.id.rb_loadapp_dl -> {
-                    if (view.isChecked) urlSelected = getString(R.string.loadapp_url)
-                }
-                R.id.rb_retrofit_dl -> {
-                    if (view.isChecked) urlSelected = getString(R.string.retrofit_url)
-                }
-            }
+        if (view is RadioButton && downloadButton.buttonState == ButtonState.Init){
+            downloadButton.setLoadingButtonState(ButtonState.Clicked)
         }
+    }
+
+    companion object {
+        const val glideUrl = "https://github.com/bumptech/glide/archive/master.zip"
+        const val loadAppUrl = "https://github.com/udacity/nd940-c3-advanced-android-programming-project-starter/archive/master.zip"
+        const val retrofitUrl = "https://github.com/square/retrofit/archive/master.zip"
     }
 
 }
